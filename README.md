@@ -1,0 +1,60 @@
+# Shutter Remote
+
+Turn a spare Google Pixel into a wireless Bluetooth shutter remote for another
+Pixel's **astrophotography mode** — so you can trigger long exposures (e.g. of a
+meteor shower) without touching the camera phone and shaking it.
+
+## How it works
+
+There is no public API to drive Google Camera's astro mode from another app, so
+this app does what a cheap Bluetooth selfie remote does: the **trigger phone**
+advertises itself as a Bluetooth HID device (Android's `BluetoothHidDevice`
+profile, API 28+, **no root**) and sends a **Volume-Up** key. Pixel's Google
+Camera treats a volume key as the shutter.
+
+The **camera phone needs no app at all** — you just pair the trigger phone and
+open Google Camera.
+
+## Setup
+
+1. Build & install this app on the **trigger phone** (the spare). Grant the
+   Bluetooth and notification permissions it asks for.
+2. On the **camera phone**: Settings → Bluetooth → pair the device shown as
+   **"Pixel Shutter Remote"**.
+3. In Google Camera on the camera phone, make sure the volume key is set to fire
+   the shutter (Settings → Gestures → "Volume key shortcut" → **Shutter**;
+   this is the Pixel default).
+4. In the app on the trigger phone: tap **Refresh list**, pick the camera phone,
+   tap **Connect**. The status line shows when it is connected.
+
+## Use
+
+- **Take Photo** — fires one shot.
+- **Auto-trigger** — enter an interval and tap **Start auto-trigger** to fire
+  repeatedly. A foreground notification + wakelock keep it running with the
+  screen off through a long session.
+- **Trigger key** — defaults to Volume Up; switch to **Enter** if a particular
+  camera responds to that instead.
+
+### Astro tips
+
+- Mount the camera phone on a tripod, pick **Night Sight**, and let
+  astrophotography engage (it only does so when the phone is perfectly still in a
+  dark scene).
+- Keep the auto-trigger interval **longer than the exposure** (≥5 min). An astro
+  exposure can run up to ~4 minutes, and a second press *during* an exposure
+  cancels it. Use the **sec** unit only for quick testing.
+
+## Build
+
+Open in Android Studio and let it sync (it generates the Gradle wrapper jar),
+then Build → Build APK. Or from the command line once the wrapper exists:
+
+```sh
+ANDROID_HOME=~/Android/Sdk ./gradlew assembleDebug
+```
+
+The debug APK lands in `app/build/outputs/apk/debug/Shutter-debug.apk`; a copy is
+also placed in `dist/Shutter.apk`.
+
+- `minSdk 28`, `targetSdk`/`compileSdk 36`, Kotlin, classic Views.

@@ -1,0 +1,32 @@
+<resources>
+    <string name="app_name">Shutter Remote</string>
+
+    <string name="status_starting">Starting…</string>
+    <string name="label_camera_phone">Camera phone (paired devices)</string>
+    <string name="btn_discoverable">Make this phone discoverable</string>
+    <string name="btn_refresh">Refresh list</string>
+    <string name="btn_connect">Connect</string>
+    <string name="btn_take_photo">Take Photo</string>
+
+    <string name="label_trigger_key">Trigger key</string>
+    <string name="key_volume_up">Volume Up</string>
+    <string name="key_enter">Enter</string>
+
+    <string name="label_auto_trigger">Auto-trigger</string>
+    <string name="label_every">Every</string>
+    <string name="default_interval">5</string>
+    <string name="unit_minutes">min</string>
+    <string name="unit_seconds">sec</string>
+    <string name="btn_start_auto">Start auto-trigger</string>
+    <string name="btn_stop_auto">Stop auto-trigger</string>
+
+    <string name="hint_interval">Tip: keep the interval longer than the astro exposure (≥5 min) so a press doesn\'t cancel a shot in progress. Use seconds only for testing.</string>
+
+    <string name="toast_not_connected">No camera phone connected — pair and connect first.</string>
+    <string name="toast_photo_sent">Shutter triggered</string>
+    <string name="toast_bad_interval">Enter an interval of 1 or more.</string>
+    <string name="toast_select_device">Select a paired device first.</string>
+    <string name="toast_bt_needed">Bluetooth permission is required.</string>
+    <string name="toast_discoverable">Discoverable for 5 min — now pair from the camera phone (look for this phone\'s Bluetooth name).</string>
+    <string name="toast_advertise_needed">Allow the Bluetooth permission, then tap again.</string>
+</resources>
