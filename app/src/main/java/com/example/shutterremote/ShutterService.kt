@@ -196,8 +196,16 @@ class ShutterService : Service(), HidController.Listener {
     private fun finishInterval() {
         intervalJob = null
         releaseWakeLock()
+        announceCompletion(maxShots)
         uiListener?.onIntervalStateChanged(false)
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+    }
+
+    /** Spoken confirmation that the full requested set of exposures was taken. */
+    private fun announceCompletion(total: Int) {
+        if (!ttsReady) return
+        // QUEUE_ADD so it follows the last count rather than cutting it off.
+        tts?.speak("Set of $total exposures complete.", TextToSpeech.QUEUE_ADD, null, "set-complete")
     }
 
     fun stopInterval() {

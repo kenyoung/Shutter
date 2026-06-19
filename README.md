@@ -35,7 +35,9 @@ open Google Camera.
   screen off through a long session.
 - **Max exposures** — optional limit for auto-trigger: it stops automatically
   after this many shots (leave blank for unlimited). The notification shows
-  `N / max` progress. A manual **Stop** still works at any time.
+  `N / max` progress. A manual **Stop** still works at any time. When the full
+  set finishes on its own, the voice announces "Set of {x} exposures complete."
+  (this is always spoken, even in Beep Mode).
 - **Trigger key** — defaults to Volume Up; switch to **Enter** if a particular
   camera responds to that instead.
 - **Audio feedback** — each successful trigger is confirmed aloud, so you can
