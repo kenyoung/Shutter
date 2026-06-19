@@ -49,6 +49,7 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
             service = s
             bound = true
             s.setUiListener(this@MainActivity)
+            s.feedbackMode = selectedFeedbackMode()
             binding.statusText.text = s.lastStatus
             onIntervalStateChanged(s.isIntervalRunning)
             onHostConnectionChanged(s.controller.isConnected, s.controller.host?.let { s.controller.deviceLabel(it) })
@@ -113,8 +114,19 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
             service?.setTriggerKey(key)
         }
 
+        binding.feedbackGroup.setOnCheckedChangeListener { _, _ ->
+            service?.feedbackMode = selectedFeedbackMode()
+        }
+
         binding.intervalButton.setOnClickListener { toggleInterval() }
     }
+
+    private fun selectedFeedbackMode(): ShutterService.FeedbackMode =
+        if (binding.modeBeep.isChecked) {
+            ShutterService.FeedbackMode.BEEP
+        } else {
+            ShutterService.FeedbackMode.COUNT
+        }
 
     private fun toggleInterval() {
         val running = service?.isIntervalRunning ?: false
@@ -138,9 +150,13 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
         val unitMs = if (binding.unitSeconds.isChecked) 1_000L else 60_000L
         val intervalMs = value * unitMs
 
+        // Blank or 0 means unlimited; otherwise stop after this many exposures.
+        val maxShots = binding.maxShotsInput.text.toString().toIntOrNull()?.coerceAtLeast(0) ?: 0
+
         val intent = Intent(this, ShutterService::class.java)
             .setAction(ShutterService.ACTION_START_INTERVAL)
             .putExtra(ShutterService.EXTRA_INTERVAL_MS, intervalMs)
+            .putExtra(ShutterService.EXTRA_MAX_SHOTS, maxShots)
         ContextCompat.startForegroundService(this, intent)
     }
 

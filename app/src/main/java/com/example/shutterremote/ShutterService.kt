@@ -8,10 +8,14 @@ import android.bluetooth.BluetoothDevice
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import android.speech.tts.TextToSpeech
+import java.util.Locale
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import kotlinx.coroutines.CoroutineScope
@@ -54,6 +58,20 @@ class ShutterService : Service(), HidController.Listener {
     private var wakeLock: PowerManager.WakeLock? = null
     private var intervalJob: Job? = null
     private var shotCount = 0
+    private var maxShots = 0 // 0 = unlimited
+
+    /** How a successful trigger is signalled audibly. */
+    enum class FeedbackMode { BEEP, COUNT }
+
+    @Volatile
+    var feedbackMode: FeedbackMode = FeedbackMode.COUNT
+
+    // Speaks the running exposure count after each successful trigger (COUNT mode).
+    private var tts: TextToSpeech? = null
+    private var ttsReady = false
+
+    // Short confirmation beep (BEEP mode); created on first use.
+    private var toneGenerator: ToneGenerator? = null
 
     var lastStatus: String = "Starting…"
         private set
@@ -66,6 +84,12 @@ class ShutterService : Service(), HidController.Listener {
             it.start()
         }
         createNotificationChannel()
+        tts = TextToSpeech(this) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                tts?.language = Locale.US
+                ttsReady = true
+            }
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder = binder
@@ -74,8 +98,9 @@ class ShutterService : Service(), HidController.Listener {
         when (intent?.action) {
             ACTION_START_INTERVAL -> {
                 val intervalMs = intent.getLongExtra(EXTRA_INTERVAL_MS, DEFAULT_INTERVAL_MS)
+                val maxShots = intent.getIntExtra(EXTRA_MAX_SHOTS, 0)
                 goForeground()
-                startInterval(intervalMs)
+                startInterval(intervalMs, maxShots)
             }
             ACTION_STOP_INTERVAL -> {
                 stopInterval()
@@ -88,6 +113,11 @@ class ShutterService : Service(), HidController.Listener {
     override fun onDestroy() {
         stopInterval()
         controller.stop()
+        tts?.stop()
+        tts?.shutdown()
+        tts = null
+        toneGenerator?.release()
+        toneGenerator = null
         scope.cancel()
         super.onDestroy()
     }
@@ -113,23 +143,61 @@ class ShutterService : Service(), HidController.Listener {
         val ok = controller.fireShutter()
         if (ok) {
             shotCount++
+            signal(shotCount)
             uiListener?.onShotFired(shotCount)
         }
         return ok
     }
 
-    private fun startInterval(intervalMs: Long) {
+    /** Audible confirmation of a successful trigger, per the selected mode. */
+    private fun signal(count: Int) {
+        when (feedbackMode) {
+            FeedbackMode.BEEP -> beep()
+            FeedbackMode.COUNT -> announce(count)
+        }
+    }
+
+    /** Speak the exposure count aloud (e.g. "1", "2", …) as confirmation. */
+    private fun announce(count: Int) {
+        if (!ttsReady) return
+        tts?.speak(count.toString(), TextToSpeech.QUEUE_FLUSH, null, "shot-$count")
+    }
+
+    private fun beep() {
+        try {
+            val tg = toneGenerator
+                ?: ToneGenerator(AudioManager.STREAM_MUSIC, BEEP_VOLUME).also { toneGenerator = it }
+            tg.startTone(ToneGenerator.TONE_PROP_BEEP, BEEP_MS)
+        } catch (_: RuntimeException) {
+            // Audio hardware unavailable — triggering still succeeded.
+        }
+    }
+
+    private fun startInterval(intervalMs: Long, maxShots: Int) {
         intervalJob?.cancel()
         acquireWakeLock()
         shotCount = 0
+        this.maxShots = maxShots
         uiListener?.onIntervalStateChanged(true)
         intervalJob = scope.launch {
             while (isActive) {
                 fireOnce()
                 updateNotification()
+                if (maxShots in 1..shotCount) break // reached the requested count
                 delay(intervalMs)
             }
+            // Reaching here with the coroutine still active means we hit the
+            // limit (a manual stop cancels the coroutine instead).
+            if (isActive) finishInterval()
         }
+    }
+
+    /** Auto-trigger reached its exposure limit — tear the session down cleanly. */
+    private fun finishInterval() {
+        intervalJob = null
+        releaseWakeLock()
+        uiListener?.onIntervalStateChanged(false)
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
     }
 
     fun stopInterval() {
@@ -170,8 +238,9 @@ class ShutterService : Service(), HidController.Listener {
     }
 
     private fun buildNotification(): Notification {
+        val progress = if (maxShots > 0) "$shotCount / $maxShots shot(s)" else "$shotCount shot(s)"
         val text = if (controller.isConnected) {
-            "Auto-trigger running · $shotCount shot(s)"
+            "Auto-trigger running · $progress"
         } else {
             "Auto-trigger running · waiting for camera phone"
         }
@@ -214,10 +283,13 @@ class ShutterService : Service(), HidController.Listener {
         const val ACTION_START_INTERVAL = "com.example.shutterremote.START_INTERVAL"
         const val ACTION_STOP_INTERVAL = "com.example.shutterremote.STOP_INTERVAL"
         const val EXTRA_INTERVAL_MS = "interval_ms"
+        const val EXTRA_MAX_SHOTS = "max_shots"
 
         private const val DEFAULT_INTERVAL_MS = 5 * 60_000L
         private const val MAX_WAKELOCK_MS = 12 * 60 * 60_000L // 12h safety cap
         private const val CHANNEL_ID = "shutter_remote"
         private const val NOTIFICATION_ID = 1
+        private const val BEEP_VOLUME = 100 // ToneGenerator volume, 0–100
+        private const val BEEP_MS = 150
     }
 }

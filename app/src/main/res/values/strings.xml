@@ -17,10 +17,16 @@
     <string name="default_interval">5</string>
     <string name="unit_minutes">min</string>
     <string name="unit_seconds">sec</string>
+    <string name="label_max_shots">Max exposures (blank = unlimited)</string>
+    <string name="hint_max_shots">∞</string>
     <string name="btn_start_auto">Start auto-trigger</string>
     <string name="btn_stop_auto">Stop auto-trigger</string>
 
     <string name="hint_interval">Tip: keep the interval longer than the astro exposure (≥5 min) so a press doesn\'t cancel a shot in progress. Use seconds only for testing.</string>
+
+    <string name="label_feedback">Audio feedback</string>
+    <string name="mode_beep">Beep Mode</string>
+    <string name="mode_count">Count Mode</string>
 
     <string name="toast_not_connected">No camera phone connected — pair and connect first.</string>
     <string name="toast_photo_sent">Shutter triggered</string>

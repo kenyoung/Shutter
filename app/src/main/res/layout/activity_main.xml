@@ -163,6 +163,30 @@
             </RadioGroup>
         </LinearLayout>
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/label_max_shots" />
+
+            <EditText
+                android:id="@+id/maxShotsInput"
+                android:layout_width="80dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:inputType="number"
+                android:hint="@string/hint_max_shots"
+                android:textAlignment="center"
+                android:autofillHints="" />
+        </LinearLayout>
+
         <Button
             android:id="@+id/intervalButton"
             android:layout_width="match_parent"
@@ -179,5 +203,35 @@
             android:layout_marginTop="12dp"
             android:text="@string/hint_interval"
             android:textSize="13sp" />
+
+        <!-- Audio feedback mode -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/label_feedback"
+            android:textStyle="bold" />
+
+        <RadioGroup
+            android:id="@+id/feedbackGroup"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/modeBeep"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/mode_beep" />
+
+            <RadioButton
+                android:id="@+id/modeCount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:checked="true"
+                android:text="@string/mode_count" />
+        </RadioGroup>
     </LinearLayout>
 </ScrollView>
