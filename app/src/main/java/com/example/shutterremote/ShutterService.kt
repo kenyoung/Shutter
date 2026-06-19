@@ -59,6 +59,7 @@ class ShutterService : Service(), HidController.Listener {
     private var intervalJob: Job? = null
     private var shotCount = 0
     private var maxShots = 0 // 0 = unlimited
+    private var connectionLostDuringSession = false
 
     /** How a successful trigger is signalled audibly. */
     enum class FeedbackMode { BEEP, COUNT }
@@ -178,6 +179,7 @@ class ShutterService : Service(), HidController.Listener {
         acquireWakeLock()
         shotCount = 0
         this.maxShots = maxShots
+        connectionLostDuringSession = false
         uiListener?.onIntervalStateChanged(true)
         intervalJob = scope.launch {
             while (isActive) {
@@ -202,10 +204,15 @@ class ShutterService : Service(), HidController.Listener {
     }
 
     /** Spoken confirmation that the full requested set of exposures was taken. */
-    private fun announceCompletion(total: Int) {
+    private fun announceCompletion(total: Int) = speak("Set of $total exposures complete.")
+
+    /**
+     * Speak an alert/announcement regardless of feedback mode. QUEUE_ADD so it
+     * follows any in-progress count rather than cutting it off.
+     */
+    private fun speak(text: String) {
         if (!ttsReady) return
-        // QUEUE_ADD so it follows the last count rather than cutting it off.
-        tts?.speak("Set of $total exposures complete.", TextToSpeech.QUEUE_ADD, null, "set-complete")
+        tts?.speak(text, TextToSpeech.QUEUE_ADD, null, "msg")
     }
 
     fun stopInterval() {
@@ -224,8 +231,20 @@ class ShutterService : Service(), HidController.Listener {
     }
 
     override fun onHostConnectionChanged(device: BluetoothDevice?) {
+        val connected = device != null
+        // Audibly warn if the camera link drops mid-session, and confirm recovery,
+        // so an unattended night doesn't silently stop capturing.
+        if (isIntervalRunning) {
+            if (!connected) {
+                connectionLostDuringSession = true
+                speak("Camera disconnected. Reconnecting.")
+            } else if (connectionLostDuringSession) {
+                connectionLostDuringSession = false
+                speak("Camera reconnected.")
+            }
+        }
         val label = device?.let { controller.deviceLabel(it) }
-        uiListener?.onHostConnectionChanged(device != null, label)
+        uiListener?.onHostConnectionChanged(connected, label)
     }
 
     // --- Foreground / notification plumbing ---

@@ -48,6 +48,11 @@ class HidController(private val context: Context) {
     @Volatile
     private var connectedHost: BluetoothDevice? = null
 
+    // The host we want to stay connected to; drives automatic reconnection after
+    // an unexpected drop during a long session. Cleared on an explicit disconnect.
+    private var desiredHost: BluetoothDevice? = null
+    private var userDisconnect = false
+
     val isConnected: Boolean get() = connectedHost != null
     val host: BluetoothDevice? get() = connectedHost
 
@@ -81,6 +86,9 @@ class HidController(private val context: Context) {
 
     /** Unregister and release the proxy. */
     fun stop() {
+        desiredHost = null
+        userDisconnect = true
+        mainHandler.removeCallbacks(reconnectRunnable)
         val dev = hidDevice
         if (dev != null && hasBtPermission()) {
             try {
@@ -110,12 +118,17 @@ class HidController(private val context: Context) {
             return
         }
         if (!hasBtPermission()) return
+        desiredHost = device
+        userDisconnect = false
         notifyStatus("Connecting to ${deviceLabel(device)}…")
         dev.connect(device)
     }
 
     @SuppressLint("MissingPermission")
     fun disconnect() {
+        userDisconnect = true
+        desiredHost = null
+        mainHandler.removeCallbacks(reconnectRunnable)
         val dev = hidDevice ?: return
         val target = connectedHost ?: return
         if (!hasBtPermission()) return
@@ -195,7 +208,29 @@ class HidController(private val context: Context) {
                         else -> "Ready — not connected"
                     }
                 )
+                // Unexpected drop (not a user disconnect): keep trying to restore
+                // the link so a brief glitch doesn't end the night's session.
+                if (state == BluetoothProfile.STATE_DISCONNECTED &&
+                    desiredHost != null && !userDisconnect
+                ) {
+                    mainHandler.removeCallbacks(reconnectRunnable)
+                    mainHandler.postDelayed(reconnectRunnable, RECONNECT_DELAY_MS)
+                }
             }
+        }
+    }
+
+    private val reconnectRunnable = Runnable { attemptReconnect() }
+
+    @SuppressLint("MissingPermission")
+    private fun attemptReconnect() {
+        val target = desiredHost ?: return
+        val dev = hidDevice ?: return
+        if (connectedHost != null || !appRegistered || !hasBtPermission()) return
+        notifyStatus("Reconnecting to ${deviceLabel(target)}…")
+        try {
+            dev.connect(target)
+        } catch (_: SecurityException) {
         }
     }
 
@@ -211,5 +246,6 @@ class HidController(private val context: Context) {
 
     companion object {
         private const val KEY_PRESS_MS = 60L
+        private const val RECONNECT_DELAY_MS = 5_000L
     }
 }

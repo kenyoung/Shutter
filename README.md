@@ -49,6 +49,19 @@ open Google Camera.
   stream so it stays audible with the ringer silenced, and only sounds when a
   shot is actually sent — not as a confirmation that the camera captured.
 
+### Reliability for unattended nights
+
+- **Settings persist** — interval, unit, max exposures, feedback mode, trigger
+  key, and the last camera phone are remembered between launches, so you can set
+  up the same way each night. The last device is pre-selected in the list.
+- **Auto-reconnect** — if the Bluetooth link drops mid-session, the app keeps
+  retrying (every few seconds) to restore it, so a brief glitch doesn't end the
+  night. Dropped ticks are *not* counted toward the max-exposure limit.
+- **Connection alerts** — during auto-trigger, the voice warns "Camera
+  disconnected. Reconnecting." on a drop and "Camera reconnected." on recovery
+  (spoken in either feedback mode), so you notice instead of finding gaps in the
+  morning.
+
 ### Astro tips
 
 - Mount the camera phone on a tripod, pick **Night Sight**, and let

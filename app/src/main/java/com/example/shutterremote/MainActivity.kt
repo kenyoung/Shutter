@@ -26,6 +26,7 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
     private var service: ShutterService? = null
     private var bound = false
     private var devices: List<BluetoothDevice> = emptyList()
+    private val prefs by lazy { Prefs(this) }
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -50,6 +51,7 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
             bound = true
             s.setUiListener(this@MainActivity)
             s.feedbackMode = selectedFeedbackMode()
+            s.setTriggerKey(selectedTriggerKey())
             binding.statusText.text = s.lastStatus
             onIntervalStateChanged(s.isIntervalRunning)
             onHostConnectionChanged(s.controller.isConnected, s.controller.host?.let { s.controller.deviceLabel(it) })
@@ -67,6 +69,7 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        restoreSettings()
         requestNeededPermissions()
         wireUi()
     }
@@ -78,11 +81,28 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
 
     override fun onStop() {
         super.onStop()
+        saveSettings()
         if (bound) {
             service?.setUiListener(null)
             unbindService(connection)
             bound = false
         }
+    }
+
+    private fun restoreSettings() {
+        binding.intervalInput.setText(prefs.intervalValue)
+        binding.maxShotsInput.setText(prefs.maxShots)
+        (if (prefs.unitSeconds) binding.unitSeconds else binding.unitMinutes).isChecked = true
+        (if (prefs.feedbackBeep) binding.modeBeep else binding.modeCount).isChecked = true
+        (if (prefs.triggerEnter) binding.keyEnter else binding.keyVolumeUp).isChecked = true
+    }
+
+    private fun saveSettings() {
+        prefs.intervalValue = binding.intervalInput.text.toString()
+        prefs.maxShots = binding.maxShotsInput.text.toString()
+        prefs.unitSeconds = binding.unitSeconds.isChecked
+        prefs.feedbackBeep = binding.modeBeep.isChecked
+        prefs.triggerEnter = binding.keyEnter.isChecked
     }
 
     private fun wireUi() {
@@ -96,6 +116,7 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
             if (device == null) {
                 toast(R.string.toast_select_device)
             } else {
+                prefs.lastDeviceAddress = device.address
                 service?.connect(device)
             }
         }
@@ -126,6 +147,13 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
             ShutterService.FeedbackMode.BEEP
         } else {
             ShutterService.FeedbackMode.COUNT
+        }
+
+    private fun selectedTriggerKey(): HidController.TriggerKey =
+        if (binding.keyEnter.isChecked) {
+            HidController.TriggerKey.ENTER
+        } else {
+            HidController.TriggerKey.VOLUME_UP
         }
 
     private fun toggleInterval() {
@@ -183,6 +211,9 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
             android.R.layout.simple_spinner_dropdown_item,
             display
         )
+        // Pre-select last night's camera phone so Connect just works.
+        val savedIdx = list.indexOfFirst { it.address == prefs.lastDeviceAddress }
+        if (savedIdx >= 0) binding.deviceSpinner.setSelection(savedIdx)
     }
 
     private fun requestNeededPermissions() {
