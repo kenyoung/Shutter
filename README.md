@@ -33,8 +33,19 @@ open Google Camera.
 - **Auto-trigger** — enter an interval and tap **Start auto-trigger** to fire
   repeatedly. A foreground notification + wakelock keep it running with the
   screen off through a long session.
+- **Max exposures** — optional limit for auto-trigger: it stops automatically
+  after this many shots (leave blank for unlimited). The notification shows
+  `N / max` progress. A manual **Stop** still works at any time.
 - **Trigger key** — defaults to Volume Up; switch to **Enter** if a particular
   camera responds to that instead.
+- **Audio feedback** — each successful trigger is confirmed aloud, so you can
+  track progress without looking at the phone:
+  - **Count Mode** (default) — speaks the running exposure count ("1", "2", …).
+  - **Beep Mode** — plays a short tone instead.
+
+  The feedback plays on the trigger phone (the one in your hand), uses the media
+  stream so it stays audible with the ringer silenced, and only sounds when a
+  shot is actually sent — not as a confirmation that the camera captured.
 
 ### Astro tips
 
