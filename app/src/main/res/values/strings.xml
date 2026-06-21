@@ -27,10 +27,11 @@
     <string name="label_feedback">Audio feedback</string>
     <string name="mode_beep">Beep Mode</string>
     <string name="mode_count">Count Mode</string>
+    <string name="label_mute">Mute (no sounds)</string>
 
     <string name="toast_not_connected">No camera phone connected — pair and connect first.</string>
     <string name="toast_photo_sent">Shutter triggered</string>
-    <string name="toast_bad_interval">Enter an interval of 1 or more.</string>
+    <string name="toast_bad_interval">Enter an interval greater than 0 (tenths allowed, e.g. 0.5).</string>
     <string name="toast_select_device">Select a paired device first.</string>
     <string name="toast_bt_needed">Bluetooth permission is required.</string>
     <string name="toast_discoverable">Discoverable for 5 min — now pair from the camera phone (look for this phone\'s Bluetooth name).</string>

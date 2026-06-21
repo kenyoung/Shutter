@@ -135,7 +135,7 @@
                 android:layout_width="80dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:inputType="number"
+                android:inputType="numberDecimal"
                 android:text="@string/default_interval"
                 android:textAlignment="center"
                 android:autofillHints="" />
@@ -233,5 +233,12 @@
                 android:checked="true"
                 android:text="@string/mode_count" />
         </RadioGroup>
+
+        <CheckBox
+            android:id="@+id/muteToggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/label_mute" />
     </LinearLayout>
 </ScrollView>

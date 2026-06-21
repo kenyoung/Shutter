@@ -59,6 +59,7 @@ class ShutterService : Service(), HidController.Listener {
     private var intervalJob: Job? = null
     private var shotCount = 0
     private var maxShots = 0 // 0 = unlimited
+    private var currentIntervalMs = 0L
     private var connectionLostDuringSession = false
 
     /** How a successful trigger is signalled audibly. */
@@ -66,6 +67,10 @@ class ShutterService : Service(), HidController.Listener {
 
     @Volatile
     var feedbackMode: FeedbackMode = FeedbackMode.COUNT
+
+    /** When true, all audio (counts, beeps, announcements, alerts) is suppressed. */
+    @Volatile
+    var muted: Boolean = false
 
     // Speaks the running exposure count after each successful trigger (COUNT mode).
     private var tts: TextToSpeech? = null
@@ -154,17 +159,22 @@ class ShutterService : Service(), HidController.Listener {
     private fun signal(count: Int) {
         when (feedbackMode) {
             FeedbackMode.BEEP -> beep()
-            FeedbackMode.COUNT -> announce(count)
+            // Skip the spoken count for sub-second auto-trigger intervals — the
+            // number takes longer to say than the gap between shots. Single shots
+            // (no interval running) are always announced.
+            FeedbackMode.COUNT ->
+                if (!isIntervalRunning || currentIntervalMs >= 1_000L) announce(count)
         }
     }
 
     /** Speak the exposure count aloud (e.g. "1", "2", …) as confirmation. */
     private fun announce(count: Int) {
-        if (!ttsReady) return
+        if (muted || !ttsReady) return
         tts?.speak(count.toString(), TextToSpeech.QUEUE_FLUSH, null, "shot-$count")
     }
 
     private fun beep() {
+        if (muted) return
         try {
             val tg = toneGenerator
                 ?: ToneGenerator(AudioManager.STREAM_MUSIC, BEEP_VOLUME).also { toneGenerator = it }
@@ -179,6 +189,7 @@ class ShutterService : Service(), HidController.Listener {
         acquireWakeLock()
         shotCount = 0
         this.maxShots = maxShots
+        currentIntervalMs = intervalMs
         connectionLostDuringSession = false
         uiListener?.onIntervalStateChanged(true)
         intervalJob = scope.launch {
@@ -211,7 +222,7 @@ class ShutterService : Service(), HidController.Listener {
      * follows any in-progress count rather than cutting it off.
      */
     private fun speak(text: String) {
-        if (!ttsReady) return
+        if (muted || !ttsReady) return
         tts?.speak(text, TextToSpeech.QUEUE_ADD, null, "msg")
     }
 

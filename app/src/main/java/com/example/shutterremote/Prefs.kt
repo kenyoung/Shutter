@@ -32,6 +32,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_TRIGGER_ENTER, false)
         set(v) = sp.edit().putBoolean(KEY_TRIGGER_ENTER, v).apply()
 
+    /** true = all audio suppressed; defaults to false (un-muted). */
+    var muted: Boolean
+        get() = sp.getBoolean(KEY_MUTED, false)
+        set(v) = sp.edit().putBoolean(KEY_MUTED, v).apply()
+
     var lastDeviceAddress: String?
         get() = sp.getString(KEY_LAST_DEVICE, null)
         set(v) = sp.edit().putString(KEY_LAST_DEVICE, v).apply()
@@ -43,6 +48,7 @@ class Prefs(context: Context) {
         private const val KEY_MAX_SHOTS = "max_shots"
         private const val KEY_FEEDBACK_BEEP = "feedback_beep"
         private const val KEY_TRIGGER_ENTER = "trigger_enter"
+        private const val KEY_MUTED = "muted"
         private const val KEY_LAST_DEVICE = "last_device"
     }
 }

@@ -14,6 +14,7 @@ import android.os.IBinder
 import android.view.WindowManager
 import android.widget.ArrayAdapter
 import android.widget.Toast
+import kotlin.math.roundToLong
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -51,6 +52,7 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
             bound = true
             s.setUiListener(this@MainActivity)
             s.feedbackMode = selectedFeedbackMode()
+            s.muted = binding.muteToggle.isChecked
             s.setTriggerKey(selectedTriggerKey())
             binding.statusText.text = s.lastStatus
             onIntervalStateChanged(s.isIntervalRunning)
@@ -95,6 +97,7 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
         (if (prefs.unitSeconds) binding.unitSeconds else binding.unitMinutes).isChecked = true
         (if (prefs.feedbackBeep) binding.modeBeep else binding.modeCount).isChecked = true
         (if (prefs.triggerEnter) binding.keyEnter else binding.keyVolumeUp).isChecked = true
+        binding.muteToggle.isChecked = prefs.muted
     }
 
     private fun saveSettings() {
@@ -103,6 +106,7 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
         prefs.unitSeconds = binding.unitSeconds.isChecked
         prefs.feedbackBeep = binding.modeBeep.isChecked
         prefs.triggerEnter = binding.keyEnter.isChecked
+        prefs.muted = binding.muteToggle.isChecked
     }
 
     private fun wireUi() {
@@ -139,6 +143,10 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
             service?.feedbackMode = selectedFeedbackMode()
         }
 
+        binding.muteToggle.setOnCheckedChangeListener { _, isChecked ->
+            service?.muted = isChecked
+        }
+
         binding.intervalButton.setOnClickListener { toggleInterval() }
     }
 
@@ -166,8 +174,10 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
             return
         }
 
-        val value = binding.intervalInput.text.toString().toLongOrNull()
-        if (value == null || value < 1) {
+        // Accept tenths of a unit (e.g. 0.5 sec); round to one decimal place.
+        val value = binding.intervalInput.text.toString().toDoubleOrNull()
+        val tenths = value?.let { (it * 10).roundToLong() / 10.0 }
+        if (tenths == null || tenths <= 0.0) {
             toast(R.string.toast_bad_interval)
             return
         }
@@ -175,8 +185,8 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
             toast(R.string.toast_not_connected)
             return
         }
-        val unitMs = if (binding.unitSeconds.isChecked) 1_000L else 60_000L
-        val intervalMs = value * unitMs
+        val unitMs = if (binding.unitSeconds.isChecked) 1_000.0 else 60_000.0
+        val intervalMs = (tenths * unitMs).roundToLong()
 
         // Blank or 0 means unlimited; otherwise stop after this many exposures.
         val maxShots = binding.maxShotsInput.text.toString().toIntOrNull()?.coerceAtLeast(0) ?: 0

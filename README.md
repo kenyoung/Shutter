@@ -32,7 +32,8 @@ open Google Camera.
 - **Take Photo** — fires one shot.
 - **Auto-trigger** — enter an interval and tap **Start auto-trigger** to fire
   repeatedly. A foreground notification + wakelock keep it running with the
-  screen off through a long session.
+  screen off through a long session. The interval accepts tenths (e.g. `0.5`
+  sec).
 - **Max exposures** — optional limit for auto-trigger: it stops automatically
   after this many shots (leave blank for unlimited). The notification shows
   `N / max` progress. A manual **Stop** still works at any time. When the full
@@ -43,11 +44,17 @@ open Google Camera.
 - **Audio feedback** — each successful trigger is confirmed aloud, so you can
   track progress without looking at the phone:
   - **Count Mode** (default) — speaks the running exposure count ("1", "2", …).
+    The spoken count is skipped when the auto-trigger interval is under 1 sec
+    (the number takes longer to say than the gap between shots); single shots
+    are always announced.
   - **Beep Mode** — plays a short tone instead.
 
   The feedback plays on the trigger phone (the one in your hand), uses the media
   stream so it stays audible with the ringer silenced, and only sounds when a
   shot is actually sent — not as a confirmation that the camera captured.
+- **Mute** — a checkbox that silences *all* app audio (counts, beeps, the
+  completion announcement, and connection alerts). Off by default; the setting
+  is remembered between launches.
 
 ### Reliability for unattended nights
 
