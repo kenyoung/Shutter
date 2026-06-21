@@ -5,6 +5,7 @@
     android:fillViewport="true">
 
     <LinearLayout
+        android:id="@+id/rootContent"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
@@ -29,7 +30,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="12dp"
             android:text="@string/label_camera_phone"
             android:textStyle="bold" />
 
@@ -76,8 +77,8 @@
             android:id="@+id/takePhotoButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
-            android:minHeight="72dp"
+            android:layout_marginTop="14dp"
+            android:minHeight="60dp"
             android:text="@string/btn_take_photo"
             android:textSize="20sp" />
 
@@ -85,7 +86,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="12dp"
             android:text="@string/label_trigger_key"
             android:textStyle="bold" />
 
@@ -114,7 +115,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="12dp"
             android:text="@string/label_auto_trigger"
             android:textStyle="bold" />
 
@@ -191,8 +192,8 @@
             android:id="@+id/intervalButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:minHeight="60dp"
+            android:layout_marginTop="8dp"
+            android:minHeight="52dp"
             android:text="@string/btn_start_auto"
             android:textSize="18sp" />
 
@@ -200,15 +201,15 @@
             android:id="@+id/intervalInfo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="8dp"
             android:text="@string/hint_interval"
-            android:textSize="13sp" />
+            android:textSize="12sp" />
 
         <!-- Audio feedback mode -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="12dp"
             android:text="@string/label_feedback"
             android:textStyle="bold" />
 

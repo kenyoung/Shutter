@@ -71,6 +71,13 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Drop the content below the OS status bar (clock, airplane-mode, etc.).
+        // 1/16 of screen height is enough clearance; side/bottom padding (16dp)
+        // is preserved.
+        val dm = resources.displayMetrics
+        val side = (16 * dm.density).toInt()
+        binding.rootContent.setPadding(side, dm.heightPixels / 16, side, side)
+
         restoreSettings()
         requestNeededPermissions()
         wireUi()
