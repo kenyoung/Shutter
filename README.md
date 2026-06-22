@@ -39,10 +39,12 @@ open Google Camera.
   `N / max` progress. A manual **Stop** still works at any time. When the full
   set finishes on its own, the voice announces "Set of {x} exposures complete."
   (this is always spoken, even in Beep Mode).
-- **Countdown** — while auto-trigger is running, a "Next exposure in N s" timer
-  counts down (refreshed once per second) so you can see when the next shot
-  will fire. It appears only for intervals of **at least 10 sec** (shorter gaps
-  aren't worth watching) and disappears when the session stops.
+- **Countdown** — while auto-trigger is running, a timer counts down to the
+  next shot (refreshed once per second). It reads `{x} more, next at HH:MM:SS
+  in {y} s` — the exposures still to go, the wall-clock time the next one
+  fires, and the seconds remaining — or just `Next at HH:MM:SS in {y} s` when
+  the session is unlimited. It appears only for intervals of **at least 10 sec**
+  (shorter gaps aren't worth watching) and disappears when the session stops.
 - **Trigger key** — defaults to Volume Up; switch to **Enter** if a particular
   camera responds to that instead.
 - **Audio feedback** — each successful trigger is confirmed aloud, so you can
