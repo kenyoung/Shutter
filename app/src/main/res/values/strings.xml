@@ -22,7 +22,8 @@
     <string name="btn_start_auto">Start auto-trigger</string>
     <string name="btn_stop_auto">Stop auto-trigger</string>
 
-    <string name="countdown_next">Next exposure in %d s</string>
+    <string name="countdown_unlimited">Next at %1$s in %2$d s</string>
+    <string name="countdown_remaining">%1$d more, next at %2$s in %3$d s</string>
 
     <string name="mode_beep">Beep Mode</string>
     <string name="mode_count">Count Mode</string>

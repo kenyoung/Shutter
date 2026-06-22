@@ -22,6 +22,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.example.shutterremote.databinding.ActivityMainBinding
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
 
@@ -34,13 +36,19 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
 
     // Refreshes the countdown-to-next-exposure label once per second.
     private val countdownHandler = Handler(Looper.getMainLooper())
+    private val clockFormat = SimpleDateFormat("HH:mm:ss", Locale.US)
     private val countdownTick = object : Runnable {
         override fun run() {
             val s = service
             if (s != null && s.countdownActive) {
                 binding.countdownTimer.visibility = View.VISIBLE
+                val secs = s.secondsUntilNextShot()
+                val at = clockFormat.format(s.nextShotEpochMillis())
+                val remaining = s.shotsRemaining
+                // Prefix the remaining-exposure count, unless the session is unlimited.
                 binding.countdownTimer.text =
-                    getString(R.string.countdown_next, s.secondsUntilNextShot())
+                    if (remaining != null) getString(R.string.countdown_remaining, remaining, at, secs)
+                    else getString(R.string.countdown_unlimited, at, secs)
                 countdownHandler.postDelayed(this, 1000L)
             } else {
                 binding.countdownTimer.visibility = View.GONE

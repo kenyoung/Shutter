@@ -99,11 +99,19 @@ class ShutterService : Service(), HidController.Listener {
             currentIntervalMs >= COUNTDOWN_MIN_INTERVAL_MS &&
             (maxShots == 0 || shotCount < maxShots)
 
+    /** Exposures still to be taken in a finite session, or null when unlimited. */
+    val shotsRemaining: Int?
+        get() = if (maxShots > 0) (maxShots - shotCount).coerceAtLeast(0) else null
+
     /** Whole seconds (rounded up, never negative) until the next scheduled shot. */
     fun secondsUntilNextShot(): Int {
         val remainingMs = nextFireAtElapsed - SystemClock.elapsedRealtime()
         return if (remainingMs <= 0) 0 else ((remainingMs + 999) / 1000).toInt()
     }
+
+    /** Wall-clock time (epoch millis) at which the next shot is scheduled to fire. */
+    fun nextShotEpochMillis(): Long =
+        System.currentTimeMillis() + (nextFireAtElapsed - SystemClock.elapsedRealtime())
 
     override fun onCreate() {
         super.onCreate()
