@@ -185,6 +185,22 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
         }
 
         binding.intervalButton.setOnClickListener { toggleInterval() }
+
+        binding.quitButton.setOnClickListener { quitApp() }
+    }
+
+    /** Stop any running session, tear the service down, and exit the app. */
+    private fun quitApp() {
+        saveSettings()
+        service?.stopInterval() // cancels the timer, wakelock, and status feed
+        if (bound) {
+            service?.setUiListener(null)
+            unbindService(connection)
+            bound = false
+        }
+        // Stop the started (foreground) service so it doesn't linger or restart.
+        stopService(Intent(this, ShutterService::class.java))
+        finishAndRemoveTask()
     }
 
     private fun selectedFeedbackMode(): ShutterService.FeedbackMode =
