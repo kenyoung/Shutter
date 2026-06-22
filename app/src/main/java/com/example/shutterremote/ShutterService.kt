@@ -14,6 +14,7 @@ import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import android.os.SystemClock
 import android.speech.tts.TextToSpeech
 import java.util.Locale
 import androidx.core.app.NotificationCompat
@@ -62,6 +63,10 @@ class ShutterService : Service(), HidController.Listener {
     private var currentIntervalMs = 0L
     private var connectionLostDuringSession = false
 
+    // elapsedRealtime() at which the next auto-trigger shot is scheduled to fire.
+    @Volatile
+    private var nextFireAtElapsed = 0L
+
     /** How a successful trigger is signalled audibly. */
     enum class FeedbackMode { BEEP, COUNT }
 
@@ -82,6 +87,23 @@ class ShutterService : Service(), HidController.Listener {
     var lastStatus: String = "Starting…"
         private set
     val isIntervalRunning: Boolean get() = intervalJob?.isActive == true
+
+    /**
+     * True while a visible countdown to the next exposure is meaningful: an
+     * auto-trigger session is running, its interval is at least
+     * [COUNTDOWN_MIN_INTERVAL_MS], and at least one more exposure is still
+     * pending (always true mid-session — the loop tears down after the last).
+     */
+    val countdownActive: Boolean
+        get() = isIntervalRunning &&
+            currentIntervalMs >= COUNTDOWN_MIN_INTERVAL_MS &&
+            (maxShots == 0 || shotCount < maxShots)
+
+    /** Whole seconds (rounded up, never negative) until the next scheduled shot. */
+    fun secondsUntilNextShot(): Int {
+        val remainingMs = nextFireAtElapsed - SystemClock.elapsedRealtime()
+        return if (remainingMs <= 0) 0 else ((remainingMs + 999) / 1000).toInt()
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -168,10 +190,8 @@ class ShutterService : Service(), HidController.Listener {
     }
 
     /** Speak the exposure count aloud (e.g. "1", "2", …) as confirmation. */
-    private fun announce(count: Int) {
-        if (muted || !ttsReady) return
-        tts?.speak(count.toString(), TextToSpeech.QUEUE_FLUSH, null, "shot-$count")
-    }
+    private fun announce(count: Int) =
+        speak(count.toString(), TextToSpeech.QUEUE_FLUSH, "shot-$count")
 
     private fun beep() {
         if (muted) return
@@ -191,17 +211,21 @@ class ShutterService : Service(), HidController.Listener {
         this.maxShots = maxShots
         currentIntervalMs = intervalMs
         connectionLostDuringSession = false
+        nextFireAtElapsed = SystemClock.elapsedRealtime() + intervalMs
         uiListener?.onIntervalStateChanged(true)
         intervalJob = scope.launch {
             while (isActive) {
                 fireOnce()
                 updateNotification()
-                if (maxShots in 1..shotCount) break // reached the requested count
+                if (maxShots in 1..shotCount) {
+                    finishInterval() // reached the requested count
+                    break
+                }
+                nextFireAtElapsed = SystemClock.elapsedRealtime() + intervalMs
                 delay(intervalMs)
             }
-            // Reaching here with the coroutine still active means we hit the
-            // limit (a manual stop cancels the coroutine instead).
-            if (isActive) finishInterval()
+            // A manual stop cancels the coroutine, so the loop just exits here
+            // without finishing — only the limit path above runs finishInterval().
         }
     }
 
@@ -218,12 +242,18 @@ class ShutterService : Service(), HidController.Listener {
     private fun announceCompletion(total: Int) = speak("Set of $total exposures complete.")
 
     /**
-     * Speak an alert/announcement regardless of feedback mode. QUEUE_ADD so it
-     * follows any in-progress count rather than cutting it off.
+     * Single TTS entry point — honours mute/readiness so no caller can bypass
+     * it. Defaults to QUEUE_ADD so alerts/announcements follow any in-progress
+     * count rather than cutting it off; the running count passes QUEUE_FLUSH to
+     * replace a stale number.
      */
-    private fun speak(text: String) {
+    private fun speak(
+        text: String,
+        queueMode: Int = TextToSpeech.QUEUE_ADD,
+        utteranceId: String = "msg"
+    ) {
         if (muted || !ttsReady) return
-        tts?.speak(text, TextToSpeech.QUEUE_ADD, null, "msg")
+        tts?.speak(text, queueMode, null, utteranceId)
     }
 
     fun stopInterval() {
@@ -329,5 +359,6 @@ class ShutterService : Service(), HidController.Listener {
         private const val NOTIFICATION_ID = 1
         private const val BEEP_VOLUME = 100 // ToneGenerator volume, 0–100
         private const val BEEP_MS = 150
+        private const val COUNTDOWN_MIN_INTERVAL_MS = 10_000L
     }
 }

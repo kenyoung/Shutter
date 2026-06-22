@@ -10,36 +10,49 @@ class Prefs(context: Context) {
 
     private val sp = context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
 
-    var intervalValue: String
+    val intervalValue: String
         get() = sp.getString(KEY_INTERVAL, "5") ?: "5"
-        set(v) = sp.edit().putString(KEY_INTERVAL, v).apply()
 
-    var unitSeconds: Boolean
+    val unitSeconds: Boolean
         get() = sp.getBoolean(KEY_UNIT_SECONDS, false)
-        set(v) = sp.edit().putBoolean(KEY_UNIT_SECONDS, v).apply()
 
-    var maxShots: String
+    val maxShots: String
         get() = sp.getString(KEY_MAX_SHOTS, "") ?: ""
-        set(v) = sp.edit().putString(KEY_MAX_SHOTS, v).apply()
 
     /** true = Beep Mode, false = Count Mode (the default). */
-    var feedbackBeep: Boolean
+    val feedbackBeep: Boolean
         get() = sp.getBoolean(KEY_FEEDBACK_BEEP, false)
-        set(v) = sp.edit().putBoolean(KEY_FEEDBACK_BEEP, v).apply()
 
     /** true = Enter key, false = Volume Up (the default). */
-    var triggerEnter: Boolean
+    val triggerEnter: Boolean
         get() = sp.getBoolean(KEY_TRIGGER_ENTER, false)
-        set(v) = sp.edit().putBoolean(KEY_TRIGGER_ENTER, v).apply()
 
     /** true = all audio suppressed; defaults to false (un-muted). */
-    var muted: Boolean
+    val muted: Boolean
         get() = sp.getBoolean(KEY_MUTED, false)
-        set(v) = sp.edit().putBoolean(KEY_MUTED, v).apply()
 
     var lastDeviceAddress: String?
         get() = sp.getString(KEY_LAST_DEVICE, null)
         set(v) = sp.edit().putString(KEY_LAST_DEVICE, v).apply()
+
+    /** Persist all interactive settings in a single commit (called on stop). */
+    fun saveSession(
+        intervalValue: String,
+        unitSeconds: Boolean,
+        maxShots: String,
+        feedbackBeep: Boolean,
+        triggerEnter: Boolean,
+        muted: Boolean,
+    ) {
+        sp.edit()
+            .putString(KEY_INTERVAL, intervalValue)
+            .putBoolean(KEY_UNIT_SECONDS, unitSeconds)
+            .putString(KEY_MAX_SHOTS, maxShots)
+            .putBoolean(KEY_FEEDBACK_BEEP, feedbackBeep)
+            .putBoolean(KEY_TRIGGER_ENTER, triggerEnter)
+            .putBoolean(KEY_MUTED, muted)
+            .apply()
+    }
 
     companion object {
         private const val NAME = "shutter_prefs"

@@ -22,9 +22,8 @@
     <string name="btn_start_auto">Start auto-trigger</string>
     <string name="btn_stop_auto">Stop auto-trigger</string>
 
-    <string name="hint_interval">Tip: keep the interval longer than the astro exposure (≥5 min) so a press doesn\'t cancel a shot in progress. Use seconds only for testing.</string>
+    <string name="countdown_next">Next exposure in %d s</string>
 
-    <string name="label_feedback">Audio feedback</string>
     <string name="mode_beep">Beep Mode</string>
     <string name="mode_count">Count Mode</string>
     <string name="label_mute">Mute (no sounds)</string>

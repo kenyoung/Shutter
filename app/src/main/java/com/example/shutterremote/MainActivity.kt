@@ -10,7 +10,10 @@ import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.view.View
 import android.view.WindowManager
 import android.widget.ArrayAdapter
 import android.widget.Toast
@@ -28,6 +31,22 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
     private var bound = false
     private var devices: List<BluetoothDevice> = emptyList()
     private val prefs by lazy { Prefs(this) }
+
+    // Refreshes the countdown-to-next-exposure label once per second.
+    private val countdownHandler = Handler(Looper.getMainLooper())
+    private val countdownTick = object : Runnable {
+        override fun run() {
+            val s = service
+            if (s != null && s.countdownActive) {
+                binding.countdownTimer.visibility = View.VISIBLE
+                binding.countdownTimer.text =
+                    getString(R.string.countdown_next, s.secondsUntilNextShot())
+                countdownHandler.postDelayed(this, 1000L)
+            } else {
+                binding.countdownTimer.visibility = View.GONE
+            }
+        }
+    }
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -90,6 +109,7 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
 
     override fun onStop() {
         super.onStop()
+        countdownHandler.removeCallbacks(countdownTick)
         saveSettings()
         if (bound) {
             service?.setUiListener(null)
@@ -108,12 +128,14 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
     }
 
     private fun saveSettings() {
-        prefs.intervalValue = binding.intervalInput.text.toString()
-        prefs.maxShots = binding.maxShotsInput.text.toString()
-        prefs.unitSeconds = binding.unitSeconds.isChecked
-        prefs.feedbackBeep = binding.modeBeep.isChecked
-        prefs.triggerEnter = binding.keyEnter.isChecked
-        prefs.muted = binding.muteToggle.isChecked
+        prefs.saveSession(
+            intervalValue = binding.intervalInput.text.toString(),
+            unitSeconds = binding.unitSeconds.isChecked,
+            maxShots = binding.maxShotsInput.text.toString(),
+            feedbackBeep = binding.modeBeep.isChecked,
+            triggerEnter = binding.keyEnter.isChecked,
+            muted = binding.muteToggle.isChecked,
+        )
     }
 
     private fun wireUi() {
@@ -137,13 +159,8 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
             toast(if (ok) R.string.toast_photo_sent else R.string.toast_not_connected)
         }
 
-        binding.triggerKeyGroup.setOnCheckedChangeListener { _, checkedId ->
-            val key = if (checkedId == R.id.keyEnter) {
-                HidController.TriggerKey.ENTER
-            } else {
-                HidController.TriggerKey.VOLUME_UP
-            }
-            service?.setTriggerKey(key)
+        binding.triggerKeyGroup.setOnCheckedChangeListener { _, _ ->
+            service?.setTriggerKey(selectedTriggerKey())
         }
 
         binding.feedbackGroup.setOnCheckedChangeListener { _, _ ->
@@ -285,10 +302,14 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
         binding.intervalButton.text =
             getString(if (running) R.string.btn_stop_auto else R.string.btn_start_auto)
         keepScreenOn(running)
+        // (Re)start or stop the once-per-second countdown refresh.
+        countdownHandler.removeCallbacks(countdownTick)
+        if (running) countdownHandler.post(countdownTick) else binding.countdownTimer.visibility = View.GONE
     }
 
     override fun onShotFired(count: Int) {
-        binding.intervalInfo.text = getString(R.string.hint_interval) + "\n\nShots fired: $count"
+        // The next-fire time is updated by the service right after this callback;
+        // the 1 Hz countdownTick picks up the reset value on its next pass.
     }
 
     companion object {
