@@ -45,13 +45,7 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
                 return
             }
             binding.countdownTimer.visibility = View.VISIBLE
-            val at = clockFormat.format(state.nextShotEpochMillis)
-            // Prefix the remaining-exposure count, unless the session is unlimited.
-            binding.countdownTimer.text = if (state.shotsRemaining != null) {
-                getString(R.string.countdown_remaining, state.shotsRemaining, at, state.secondsUntilNext)
-            } else {
-                getString(R.string.countdown_unlimited, at, state.secondsUntilNext)
-            }
+            binding.countdownTimer.text = state.toLine(this@MainActivity, clockFormat)
             countdownHandler.postDelayed(this, 1000L)
         }
     }
@@ -138,6 +132,9 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
         (if (prefs.feedbackBeep) binding.modeBeep else binding.modeCount).isChecked = true
         (if (prefs.triggerEnter) binding.keyEnter else binding.keyVolumeUp).isChecked = true
         binding.muteToggle.isChecked = prefs.muted
+        binding.reportToggle.isChecked = prefs.reportEnabled
+        binding.reportHostInput.setText(prefs.reportHost)
+        binding.reportPortInput.setText(prefs.reportPort)
     }
 
     private fun saveSettings() {
@@ -148,6 +145,9 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
             feedbackBeep = binding.modeBeep.isChecked,
             triggerEnter = binding.keyEnter.isChecked,
             muted = binding.muteToggle.isChecked,
+            reportEnabled = binding.reportToggle.isChecked,
+            reportHost = binding.reportHostInput.text.toString().trim(),
+            reportPort = binding.reportPortInput.text.toString(),
         )
     }
 
@@ -228,10 +228,14 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
         // Blank or 0 means unlimited; otherwise stop after this many exposures.
         val maxShots = binding.maxShotsInput.text.toString().toIntOrNull()?.coerceAtLeast(0) ?: 0
 
+        val reportPort = binding.reportPortInput.text.toString().toIntOrNull() ?: DEFAULT_REPORT_PORT
         val intent = Intent(this, ShutterService::class.java)
             .setAction(ShutterService.ACTION_START_INTERVAL)
             .putExtra(ShutterService.EXTRA_INTERVAL_MS, intervalMs)
             .putExtra(ShutterService.EXTRA_MAX_SHOTS, maxShots)
+            .putExtra(ShutterService.EXTRA_REPORT_ENABLED, binding.reportToggle.isChecked)
+            .putExtra(ShutterService.EXTRA_REPORT_HOST, binding.reportHostInput.text.toString().trim())
+            .putExtra(ShutterService.EXTRA_REPORT_PORT, reportPort)
         ContextCompat.startForegroundService(this, intent)
     }
 
@@ -326,5 +330,6 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
 
     companion object {
         private const val DISCOVERABLE_SECONDS = 300
+        private const val DEFAULT_REPORT_PORT = 5005
     }
 }

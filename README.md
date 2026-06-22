@@ -74,6 +74,26 @@ open Google Camera.
   disconnected. Reconnecting." on a drop and "Camera reconnected." on recovery
   (spoken in either feedback mode), so you notice instead of finding gaps in the
   morning.
+- **Remote monitoring** — the trigger phone can push its status to a computer on
+  the same Wi-Fi LAN, so you can watch the session from your desk instead of
+  standing next to the phone (which may be parked in an awkward spot for a stable
+  Bluetooth link). Tick **Send status to workstation**, enter the workstation's
+  IP (leave blank to LAN-broadcast) and a port (default `5005`), then start
+  auto-trigger. The phone sends one UDP datagram per second with the same
+  countdown line shown on screen, plus the camera connect/disconnect alerts. The
+  feed runs in the background service, so it keeps reporting with the phone's
+  screen off. On the workstation, run the included listener:
+
+  ```sh
+  ./tools/shutter-monitor.py 5005
+  ```
+
+  It rewrites the countdown line in place, scrolls alerts above it, and flags a
+  gap of more than 5 seconds (a possible stall or the phone going offline). UDP
+  is best-effort — a dropped packet just means one skipped update — and a missing
+  or unreachable workstation never affects triggering. A configured unicast IP is
+  more reliable than broadcast (some routers drop broadcast); the address is read
+  when auto-trigger starts, so change it with the session stopped.
 
 ### Astro tips
 

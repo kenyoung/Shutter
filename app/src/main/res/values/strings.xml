@@ -28,6 +28,9 @@
     <string name="mode_beep">Beep Mode</string>
     <string name="mode_count">Count Mode</string>
     <string name="label_mute">Mute (no sounds)</string>
+    <string name="label_report">Send status to workstation</string>
+    <string name="hint_report_host">Workstation IP (blank = broadcast)</string>
+    <string name="hint_report_port">Port</string>
 
     <string name="toast_not_connected">No camera phone connected — pair and connect first.</string>
     <string name="toast_photo_sent">Shutter triggered</string>

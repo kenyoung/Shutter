@@ -16,6 +16,7 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.os.SystemClock
 import android.speech.tts.TextToSpeech
+import java.text.SimpleDateFormat
 import java.util.Locale
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
@@ -65,6 +66,11 @@ class ShutterService : Service(), HidController.Listener {
     // elapsedRealtime() at which the next auto-trigger shot is scheduled to fire.
     @Volatile
     private var nextFireAtElapsed = 0L
+
+    // Pushes the live status line to a workstation over UDP (null = disabled).
+    private var reporter: StatusReporter? = null
+    private var reporterJob: Job? = null
+    private val statusClock = SimpleDateFormat("HH:mm:ss", Locale.US)
 
     /** How a successful trigger is signalled audibly. */
     enum class FeedbackMode { BEEP, COUNT }
@@ -136,8 +142,11 @@ class ShutterService : Service(), HidController.Listener {
             ACTION_START_INTERVAL -> {
                 val intervalMs = intent.getLongExtra(EXTRA_INTERVAL_MS, DEFAULT_INTERVAL_MS)
                 val maxShots = intent.getIntExtra(EXTRA_MAX_SHOTS, 0)
+                val reportEnabled = intent.getBooleanExtra(EXTRA_REPORT_ENABLED, false)
+                val reportHost = intent.getStringExtra(EXTRA_REPORT_HOST)
+                val reportPort = intent.getIntExtra(EXTRA_REPORT_PORT, DEFAULT_REPORT_PORT)
                 goForeground()
-                startInterval(intervalMs, maxShots)
+                startInterval(intervalMs, maxShots, reportEnabled, reportHost, reportPort)
             }
             ACTION_STOP_INTERVAL -> {
                 stopInterval()
@@ -212,7 +221,13 @@ class ShutterService : Service(), HidController.Listener {
         }
     }
 
-    private fun startInterval(intervalMs: Long, maxShots: Int) {
+    private fun startInterval(
+        intervalMs: Long,
+        maxShots: Int,
+        reportEnabled: Boolean = false,
+        reportHost: String? = null,
+        reportPort: Int = DEFAULT_REPORT_PORT,
+    ) {
         intervalJob?.cancel()
         acquireWakeLock()
         shotCount = 0
@@ -220,6 +235,7 @@ class ShutterService : Service(), HidController.Listener {
         currentIntervalMs = intervalMs
         connectionLostDuringSession = false
         nextFireAtElapsed = SystemClock.elapsedRealtime() + intervalMs
+        startReporter(reportEnabled, reportHost, reportPort)
         uiListener?.onIntervalStateChanged(true)
         intervalJob = scope.launch {
             while (isActive) {
@@ -240,10 +256,40 @@ class ShutterService : Service(), HidController.Listener {
     /** Auto-trigger reached its exposure limit — tear the session down cleanly. */
     private fun finishInterval() {
         intervalJob = null
+        stopReporter()
         releaseWakeLock()
         announceCompletion(maxShots)
         uiListener?.onIntervalStateChanged(false)
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+    }
+
+    // --- Status feed to the workstation (UDP) ---
+
+    /** Open the UDP feed and start pushing the status line once per second. */
+    private fun startReporter(enabled: Boolean, host: String?, port: Int) {
+        stopReporter()
+        if (!enabled) return
+        reporter = StatusReporter(host, port)
+        reporterJob = scope.launch {
+            while (isActive) {
+                reporter?.send("$KIND_STATUS\t${statusLine()}")
+                delay(REPORT_INTERVAL_MS)
+            }
+        }
+    }
+
+    private fun stopReporter() {
+        reporterJob?.cancel()
+        reporterJob = null
+        reporter?.close()
+        reporter = null
+    }
+
+    /** The same line the UI shows, or a running/idle fallback when no countdown. */
+    private fun statusLine(): String {
+        countdownState()?.let { return it.toLine(this, statusClock) }
+        val progress = if (maxShots > 0) "$shotCount / $maxShots" else "$shotCount"
+        return "Auto-trigger running · $progress shot(s)"
     }
 
     /** Spoken confirmation that the full requested set of exposures was taken. */
@@ -264,9 +310,16 @@ class ShutterService : Service(), HidController.Listener {
         tts?.speak(text, queueMode, null, utteranceId)
     }
 
+    /** Speak a session alert and mirror it to the workstation feed. */
+    private fun alert(text: String) {
+        speak(text)
+        reporter?.send("$KIND_ALERT\t$text")
+    }
+
     fun stopInterval() {
         intervalJob?.cancel()
         intervalJob = null
+        stopReporter()
         releaseWakeLock()
         uiListener?.onIntervalStateChanged(false)
     }
@@ -286,10 +339,10 @@ class ShutterService : Service(), HidController.Listener {
         if (isIntervalRunning) {
             if (!connected) {
                 connectionLostDuringSession = true
-                speak("Camera disconnected. Reconnecting.")
+                alert("Camera disconnected. Reconnecting.")
             } else if (connectionLostDuringSession) {
                 connectionLostDuringSession = false
-                speak("Camera reconnected.")
+                alert("Camera reconnected.")
             }
         }
         val label = device?.let { controller.deviceLabel(it) }
@@ -360,6 +413,15 @@ class ShutterService : Service(), HidController.Listener {
         const val ACTION_STOP_INTERVAL = "com.example.shutterremote.STOP_INTERVAL"
         const val EXTRA_INTERVAL_MS = "interval_ms"
         const val EXTRA_MAX_SHOTS = "max_shots"
+        const val EXTRA_REPORT_ENABLED = "report_enabled"
+        const val EXTRA_REPORT_HOST = "report_host"
+        const val EXTRA_REPORT_PORT = "report_port"
+
+        // Datagram type tags (payload = "<KIND>\t<message>").
+        private const val KIND_STATUS = "STATUS"
+        private const val KIND_ALERT = "ALERT"
+        private const val DEFAULT_REPORT_PORT = 5005
+        private const val REPORT_INTERVAL_MS = 1_000L
 
         private const val DEFAULT_INTERVAL_MS = 5 * 60_000L
         private const val MAX_WAKELOCK_MS = 12 * 60 * 60_000L // 12h safety cap

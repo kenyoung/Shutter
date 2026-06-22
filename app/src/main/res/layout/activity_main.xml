@@ -236,5 +236,40 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:text="@string/label_mute" />
+
+        <!-- Remote monitoring: push the status line to a workstation over UDP. -->
+        <CheckBox
+            android:id="@+id/reportToggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/label_report" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <EditText
+                android:id="@+id/reportHostInput"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:inputType="text"
+                android:hint="@string/hint_report_host"
+                android:autofillHints="" />
+
+            <EditText
+                android:id="@+id/reportPortInput"
+                android:layout_width="80dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:inputType="number"
+                android:hint="@string/hint_report_port"
+                android:textAlignment="center"
+                android:autofillHints="" />
+        </LinearLayout>
     </LinearLayout>
 </ScrollView>
