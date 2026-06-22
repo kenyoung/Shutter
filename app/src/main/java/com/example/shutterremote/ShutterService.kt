@@ -42,7 +42,6 @@ class ShutterService : Service(), HidController.Listener {
         fun onStatus(text: String)
         fun onHostConnectionChanged(connected: Boolean, label: String?)
         fun onIntervalStateChanged(running: Boolean)
-        fun onShotFired(count: Int)
     }
 
     inner class LocalBinder : Binder() {
@@ -89,29 +88,31 @@ class ShutterService : Service(), HidController.Listener {
     val isIntervalRunning: Boolean get() = intervalJob?.isActive == true
 
     /**
-     * True while a visible countdown to the next exposure is meaningful: an
-     * auto-trigger session is running, its interval is at least
-     * [COUNTDOWN_MIN_INTERVAL_MS], and at least one more exposure is still
-     * pending (always true mid-session — the loop tears down after the last).
+     * Immutable snapshot of the live countdown to the next auto-trigger shot.
+     * All fields are derived from a single clock read so they agree with each
+     * other. [shotsRemaining] is null for an unlimited session.
      */
-    val countdownActive: Boolean
-        get() = isIntervalRunning &&
-            currentIntervalMs >= COUNTDOWN_MIN_INTERVAL_MS &&
-            (maxShots == 0 || shotCount < maxShots)
+    data class CountdownState(
+        val secondsUntilNext: Int,
+        val nextShotEpochMillis: Long,
+        val shotsRemaining: Int?,
+    )
 
-    /** Exposures still to be taken in a finite session, or null when unlimited. */
-    val shotsRemaining: Int?
-        get() = if (maxShots > 0) (maxShots - shotCount).coerceAtLeast(0) else null
-
-    /** Whole seconds (rounded up, never negative) until the next scheduled shot. */
-    fun secondsUntilNextShot(): Int {
-        val remainingMs = nextFireAtElapsed - SystemClock.elapsedRealtime()
-        return if (remainingMs <= 0) 0 else ((remainingMs + 999) / 1000).toInt()
+    /**
+     * The countdown to display right now, or null when none should be shown —
+     * no auto-trigger session, or an interval too short ([COUNTDOWN_MIN_INTERVAL_MS])
+     * to be worth watching. Null *is* "inactive", so callers can't read stale
+     * timing by forgetting to check an active flag.
+     */
+    fun countdownState(): CountdownState? {
+        if (!isIntervalRunning || currentIntervalMs < COUNTDOWN_MIN_INTERVAL_MS) return null
+        val remainingMs = (nextFireAtElapsed - SystemClock.elapsedRealtime()).coerceAtLeast(0)
+        return CountdownState(
+            secondsUntilNext = ((remainingMs + 999) / 1000).toInt(),
+            nextShotEpochMillis = System.currentTimeMillis() + remainingMs,
+            shotsRemaining = if (maxShots > 0) (maxShots - shotCount).coerceAtLeast(0) else null,
+        )
     }
-
-    /** Wall-clock time (epoch millis) at which the next shot is scheduled to fire. */
-    fun nextShotEpochMillis(): Long =
-        System.currentTimeMillis() + (nextFireAtElapsed - SystemClock.elapsedRealtime())
 
     override fun onCreate() {
         super.onCreate()
@@ -180,7 +181,6 @@ class ShutterService : Service(), HidController.Listener {
         if (ok) {
             shotCount++
             signal(shotCount)
-            uiListener?.onShotFired(shotCount)
         }
         return ok
     }

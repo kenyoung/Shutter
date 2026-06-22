@@ -39,21 +39,26 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
     private val clockFormat = SimpleDateFormat("HH:mm:ss", Locale.US)
     private val countdownTick = object : Runnable {
         override fun run() {
-            val s = service
-            if (s != null && s.countdownActive) {
-                binding.countdownTimer.visibility = View.VISIBLE
-                val secs = s.secondsUntilNextShot()
-                val at = clockFormat.format(s.nextShotEpochMillis())
-                val remaining = s.shotsRemaining
-                // Prefix the remaining-exposure count, unless the session is unlimited.
-                binding.countdownTimer.text =
-                    if (remaining != null) getString(R.string.countdown_remaining, remaining, at, secs)
-                    else getString(R.string.countdown_unlimited, at, secs)
-                countdownHandler.postDelayed(this, 1000L)
-            } else {
-                binding.countdownTimer.visibility = View.GONE
+            val state = service?.countdownState()
+            if (state == null) {
+                stopCountdown()
+                return
             }
+            binding.countdownTimer.visibility = View.VISIBLE
+            val at = clockFormat.format(state.nextShotEpochMillis)
+            // Prefix the remaining-exposure count, unless the session is unlimited.
+            binding.countdownTimer.text = if (state.shotsRemaining != null) {
+                getString(R.string.countdown_remaining, state.shotsRemaining, at, state.secondsUntilNext)
+            } else {
+                getString(R.string.countdown_unlimited, at, state.secondsUntilNext)
+            }
+            countdownHandler.postDelayed(this, 1000L)
         }
+    }
+
+    private fun stopCountdown() {
+        countdownHandler.removeCallbacks(countdownTick)
+        binding.countdownTimer.visibility = View.GONE
     }
 
     private val permissionLauncher = registerForActivityResult(
@@ -117,7 +122,7 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
 
     override fun onStop() {
         super.onStop()
-        countdownHandler.removeCallbacks(countdownTick)
+        stopCountdown()
         saveSettings()
         if (bound) {
             service?.setUiListener(null)
@@ -311,13 +316,12 @@ class MainActivity : AppCompatActivity(), ShutterService.ServiceListener {
             getString(if (running) R.string.btn_stop_auto else R.string.btn_start_auto)
         keepScreenOn(running)
         // (Re)start or stop the once-per-second countdown refresh.
-        countdownHandler.removeCallbacks(countdownTick)
-        if (running) countdownHandler.post(countdownTick) else binding.countdownTimer.visibility = View.GONE
-    }
-
-    override fun onShotFired(count: Int) {
-        // The next-fire time is updated by the service right after this callback;
-        // the 1 Hz countdownTick picks up the reset value on its next pass.
+        if (running) {
+            countdownHandler.removeCallbacks(countdownTick)
+            countdownHandler.post(countdownTick)
+        } else {
+            stopCountdown()
+        }
     }
 
     companion object {
